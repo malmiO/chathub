@@ -1942,7 +1942,8 @@ def get_chat_history(user_id, other_user_id):
                 "is_image": msg.get("is_image", False),
                 "is_pdf": msg.get("is_pdf", False),
                 "is_voice": msg.get("is_voice", False),
-                "temp_id": msg.get("temp_id", "")
+                "temp_id": msg.get("temp_id", ""),
+                "reactions": msg.get("reactions", {})
             }
             
             if msg.get('is_image', False):
@@ -2020,6 +2021,50 @@ def get_user_chats(user_id):
         return jsonify({"chats": chats})
     except Exception as e:
         return jsonify({"error": str(e)}), 500 """
+        
+        
+@socketio.on('send_reaction')
+def handle_send_reaction(data):
+    try:
+        message_id = data.get('message_id')
+        user_id = data.get('user_id')
+        reaction = data.get('reaction')  # This is the emoji, or empty/null to remove
+
+        if not all([message_id, user_id]):
+            emit('reaction_error', {'error': 'Missing required fields'}, room=request.sid)
+            return
+
+        message = messages_collection.find_one({'_id': ObjectId(message_id)})
+        if not message:
+            emit('reaction_error', {'error': 'Message not found'}, room=request.sid)
+            return
+
+        # An empty reaction from the client means the user wants to remove their existing reaction.
+        if reaction:
+            update_query = {'$set': {f'reactions.{user_id}': reaction}}
+        else:
+            update_query = {'$unset': {f'reactions.{user_id}': ""}}
+
+        # Atomically update the document and get the new version.
+        updated_message = messages_collection.find_one_and_update(
+            {'_id': ObjectId(message_id)},
+            update_query,
+            return_document=True  # Use pymongo.ReturnDocument.AFTER
+        )
+
+        # Broadcast the change to everyone in the chat room.
+        room = '_'.join(sorted([message['sender_id'], message['receiver_id']]))
+        emit('reaction_updated', {
+            'message_id': message_id,
+            'reactions': updated_message.get('reactions', {})
+        }, room=room)
+
+    except InvalidId:
+        emit('reaction_error', {'error': 'Invalid message ID'}, room=request.sid)
+    except Exception as e:
+        print(f"Error handling reaction: {str(e)}")
+        emit('reaction_error', {'error': str(e)}, room=request.sid)
+        
         
 @app.route('/chats/<user_id>', methods=['GET'])
 def get_user_chats(user_id):
