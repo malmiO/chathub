@@ -1943,7 +1943,8 @@ def get_chat_history(user_id, other_user_id):
                 "is_pdf": msg.get("is_pdf", False),
                 "is_voice": msg.get("is_voice", False),
                 "temp_id": msg.get("temp_id", ""),
-             }
+                "reactions": msg.get("reactions", {})
+            }
             
             if msg.get('is_image', False):
                 message_data['image_url'] = f'/get-image/{str(msg["_id"])}'
