@@ -1943,8 +1943,7 @@ def get_chat_history(user_id, other_user_id):
                 "is_pdf": msg.get("is_pdf", False),
                 "is_voice": msg.get("is_voice", False),
                 "temp_id": msg.get("temp_id", ""),
-                "reactions": msg.get("reactions", {})
-            }
+             }
             
             if msg.get('is_image', False):
                 message_data['image_url'] = f'/get-image/{str(msg["_id"])}'
@@ -2829,5 +2828,5 @@ def handle_typing_group(data):
         emit('error', {'message': str(e)}, room=request.sid)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host="0.0.0.0", port=port, debug=False, use_reloader=False, allow_unsafe_werkzeug=True)
+    print("Starting server...")
+    socketio.run(app, host="0.0.0.0", port=8000, debug=True, use_reloader=False)
